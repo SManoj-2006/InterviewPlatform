@@ -31,6 +31,8 @@ export async function createSession(req, res) {
       name: `${problem} Session`,
       created_by_id: clerkId,
       members: [clerkId],
+      code: "",
+      language: "javascript",
     });
 
     await channel.create();
@@ -93,6 +95,38 @@ export async function getSessionById(req, res) {
     res.status(200).json({ session });
   } catch (error) {
     console.log("Error in getSessionById controller:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+export async function updateSessionCode(req, res) {
+  try {
+    const { id } = req.params;
+    const { code, language } = req.body;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid session ID" });
+    }
+
+    if (typeof code !== "string" || typeof language !== "string") {
+      return res.status(400).json({ message: "Code and language are required" });
+    }
+
+    const session = await Session.findById(id);
+    if (!session) return res.status(404).json({ message: "Session not found" });
+
+    const userId = req.user._id.toString();
+    if (session.host.toString() !== userId && session.participant?.toString() !== userId) {
+      return res.status(403).json({ message: "You are not a member of this session" });
+    }
+
+    session.code = code;
+    session.language = language;
+    await session.save();
+
+    res.status(200).json({ session });
+  } catch (error) {
+    console.log("Error in updateSessionCode controller:", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 }

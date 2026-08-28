@@ -31,6 +31,14 @@ const sessionSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    code: {
+      type: String,
+      default: "",
+    },
+    language: {
+      type: String,
+      default: "javascript",
+    },
   },
   { timestamps: true }
 );

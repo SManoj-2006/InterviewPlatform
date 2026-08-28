@@ -1,12 +1,14 @@
 import { useUser } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router";
 import { useEndSession, useJoinSession, useSessionById } from "../hooks/useSessions";
-import { PROBLEMS } from "../data/problems";
+import { LANGUAGE_CONFIG, PROBLEMS } from "../data/problems";
 import { executeCode } from "../lib/piston";
 import Navbar from "../components/Navbar";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { getDifficultyBadgeClass } from "../lib/utils";
+import { sessionApi } from "../api/sessions";
 import { Loader2Icon, LogOutIcon, PhoneOffIcon } from "lucide-react";
 import CodeEditorPanel from "../components/CodeEditorPanel";
 import OutputPanel from "../components/OutputPanel";
@@ -21,6 +23,7 @@ function SessionPage() {
   const { user } = useUser();
   const [output, setOutput] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isRefreshingCode, setIsRefreshingCode] = useState(false);
 
   const { data: sessionData, isLoading: loadingSession, refetch } = useSessionById(id);
 
@@ -45,6 +48,40 @@ function SessionPage() {
 
   const [selectedLanguage, setSelectedLanguage] = useState("javascript");
   const [code, setCode] = useState(problemData?.starterCode?.[selectedLanguage] || "");
+  const codeSyncTimer = useRef(null);
+  const starterCodeInitialized = useRef(false);
+  const hasUnsavedLocalEdit = useRef(false);
+
+  useEffect(() => {
+    if (session?.code && !hasUnsavedLocalEdit.current) {
+      setCode(session.code);
+      starterCodeInitialized.current = true;
+    }
+    if (session?.language && LANGUAGE_CONFIG[session.language]) {
+      setSelectedLanguage(session.language);
+    }
+  }, [session?.code, session?.language]);
+
+  useEffect(() => {
+    if (problemData && session && !session.code && !starterCodeInitialized.current) {
+      setCode(problemData.starterCode[selectedLanguage] || "");
+      starterCodeInitialized.current = true;
+    }
+  }, [problemData, session, selectedLanguage]);
+
+  const publishCodeUpdate = (nextCode, nextLanguage) => {
+    hasUnsavedLocalEdit.current = true;
+    if (codeSyncTimer.current) clearTimeout(codeSyncTimer.current);
+    codeSyncTimer.current = setTimeout(async () => {
+      try {
+        await sessionApi.updateSessionCode(id, { code: nextCode, language: nextLanguage });
+        hasUnsavedLocalEdit.current = false;
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Code changes could not be saved");
+        console.error("Error syncing code", error);
+      }
+    }, 150);
+  };
 
   // auto-join session if user is not already a participant and not the host
   useEffect(() => {
@@ -63,20 +100,38 @@ function SessionPage() {
     if (session.status === "completed") navigate("/dashboard");
   }, [session, loadingSession, navigate]);
 
-  // update code when problem loads or changes
-  useEffect(() => {
-    if (problemData?.starterCode?.[selectedLanguage]) {
-      setCode(problemData.starterCode[selectedLanguage]);
-    }
-  }, [problemData, selectedLanguage]);
-
   const handleLanguageChange = (e) => {
     const newLang = e.target.value;
     setSelectedLanguage(newLang);
     // use problem-specific starter code
     const starterCode = problemData?.starterCode?.[newLang] || "";
     setCode(starterCode);
+    publishCodeUpdate(starterCode, newLang);
     setOutput(null);
+  };
+
+  const handleRefreshCode = async () => {
+    setIsRefreshingCode(true);
+    hasUnsavedLocalEdit.current = false;
+
+    try {
+      const result = await refetch();
+      const latestSession = result.data?.session;
+
+      if (!latestSession) throw new Error("Session data was not returned");
+
+      if (typeof latestSession.code === "string" && latestSession.code) {
+        setCode(latestSession.code);
+      }
+      if (latestSession.language && LANGUAGE_CONFIG[latestSession.language]) {
+        setSelectedLanguage(latestSession.language);
+      }
+      toast.success("Latest shared code loaded");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Could not refresh shared code");
+    } finally {
+      setIsRefreshingCode(false);
+    }
   };
 
   const handleRunCode = async () => {
@@ -237,7 +292,12 @@ function SessionPage() {
                       code={code}
                       isRunning={isRunning}
                       onLanguageChange={handleLanguageChange}
-                      onCodeChange={(value) => setCode(value)}
+                      onCodeChange={(value) => {
+                        setCode(value);
+                        publishCodeUpdate(value, selectedLanguage);
+                      }}
+                      onRefreshCode={handleRefreshCode}
+                      isRefreshing={isRefreshingCode}
                       onRunCode={handleRunCode}
                     />
                   </Panel>

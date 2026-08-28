@@ -19,6 +19,8 @@ CodeCollab is a MERN-based real-time coding collaboration platform with:
 - Create / join / end pair-programming sessions
 - Session-level video call + chat channel
 - Multi-language code editor (JavaScript, Python, Java)
+- Shared session code persisted in MongoDB
+- In-page `Refresh Code` control for loading the latest shared editor state
 - Judge-style output panel using expected output matching
 
 ## API Endpoints (Short Reference)
@@ -32,6 +34,7 @@ CodeCollab is a MERN-based real-time coding collaboration platform with:
 | `GET` | `/api/sessions/my-recent` | Yes | List recent completed sessions |
 | `GET` | `/api/sessions/:id` | Yes | Fetch session details |
 | `POST` | `/api/sessions/:id/join` | Yes | Join session as participant |
+| `PATCH` | `/api/sessions/:id/code` | Yes | Save shared code and language |
 | `POST` | `/api/sessions/:id/end` | Yes | End session (host only) |
 | `POST` | `/api/code/execute` | Yes | Execute code through backend proxy |
 
@@ -40,8 +43,9 @@ CodeCollab is a MERN-based real-time coding collaboration platform with:
 - `frontend/`: React client
 - `backend/`: API server and business logic
 - `backend/src/controllers/`: route handlers
-- `backend/src/middleware/ProtectRoute.js`: auth + user auto-provisioning
+- `backend/src/middleware/protectRoute.js`: auth, atomic user provisioning, and Stream user synchronization
 - `backend/src/controllers/codeController.js`: code execution proxy to Piston
+- `backend/src/controllers/sessionController.js`: session lifecycle and shared code persistence
 
 ## Environment Setup
 
@@ -97,6 +101,12 @@ npm run dev --prefix backend
 npm run dev --prefix frontend
 ```
 
+### Authentication
+
+Sign in through the application's Clerk sign-in button. Inngest does not require
+an interactive login; it is used for backend event functions. Axios attaches the
+active Clerk bearer token to protected API requests.
+
 ## One-Command Docker Dev Stack
 
 Run the complete stack (Mongo + Piston + runtime installer + backend + frontend):
@@ -104,6 +114,11 @@ Run the complete stack (Mongo + Piston + runtime installer + backend + frontend)
 ```bash
 docker compose up -d
 ```
+
+The Compose stack recreates the following services when containers have been
+deleted: MongoDB, Piston, the Piston runtime initializer, the backend, and the
+frontend. Backend and frontend dependency installation is skipped when the
+persistent Node module volumes are already populated.
 
 Useful commands:
 
@@ -117,7 +132,7 @@ Services:
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:3000`
 - Piston API: `http://localhost:2000/api/v2`
-- MongoDB: `mongodb://localhost:27017`
+- MongoDB: `mongodb://localhost:27018`
 
 Note: If you already run a Piston container on the host (for example `piston_api`),
 the backend can be configured to use that container instead of the compose-managed
@@ -126,6 +141,10 @@ Piston. Set `PISTON_API_URL` in `backend/.env` or in `docker-compose.yml` to
 host-bound Piston instance. Alternatively, connect your existing container to
 the Compose network or remove the compose piston service to avoid duplicate
 containers.
+
+The Compose Piston initializer may fail when the host cannot reach GitHub release
+assets. This does not affect authentication, video, chat, or editor synchronization;
+it only prevents the corresponding execution runtime from being installed.
 
 ## Self-Hosted Piston Setup (No Public Token Needed)
 
@@ -153,10 +172,17 @@ Invoke-RestMethod -Method Get -Uri http://localhost:2000/api/v2/runtimes
 
 ## Reliability Improvements Included
 
-- automatic Mongo user provisioning from Clerk claims on first protected request
+- atomic Mongo user provisioning from Clerk claims on first protected request
+- automatic synchronization of authenticated users to Stream Chat
+- Clerk bearer token injection for all Axios API requests
 - safer session flow with ObjectId validation
 - idempotent session join behavior for retry/refresh
 - participant persistence after successful Stream membership
+- Stream Video client lifecycle cleanup that avoids repeated joins from session polling
+- increased Stream server request timeout for slower provider responses
+- session code and language persistence with membership authorization
+- editor refresh control that reloads shared code without a page reload
+- conditional Docker dependency installation for faster container recovery
 - corrected Stream user image payload
 - robust Piston execute URL handling for hosted and self-hosted bases
 
@@ -166,13 +192,15 @@ Invoke-RestMethod -Method Get -Uri http://localhost:2000/api/v2/runtimes
 - create session from account A
 - join session from account B
 - verify video + chat connect
+- edit code in account A, then use `Refresh Code` in account B to load the latest saved code
+- switch languages and confirm the selected language is shared
 - run JS/Python/Java code in both problem and session pages
 - end session and confirm participant redirect to dashboard
 
 ## Future Scope
 
 - team sessions with >2 participants
-- collaborative editor with OT/CRDT
+- real-time collaborative editor using WebSocket events or OT/CRDT
 - contest mode with timed scoring
 - plagiarism detection and submission history
 - CI/CD deployment pipeline with observability

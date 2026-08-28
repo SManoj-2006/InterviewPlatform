@@ -6,7 +6,7 @@ services:
     container_name: codecollab_mongo
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo_data:/data/db
 
@@ -55,7 +55,7 @@ services:
       PORT: 3000
       NODE_ENV: development
       DB_URL: mongodb://mongo:27017/codecollab
-      CLIENT_URL: http://localhost:5173
+      CLIENT_URL: http://192.168.1.102:5173
       # use host.docker.internal so the backend container can reach an existing
       # piston_api container that is bound to the host port 2000
       PISTON_API_URL: http://host.docker.internal:2000/api/v2
@@ -64,7 +64,7 @@ services:
     volumes:
       - .:/workspace
       - backend_node_modules:/workspace/backend/node_modules
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "if [ ! -x node_modules/.bin/nodemon ]; then npm install --no-audit --no-fund; fi; npm run dev"
 
   frontend:
     image: node:20-alpine
@@ -75,13 +75,13 @@ services:
     env_file:
       - ./frontend/.env
     environment:
-      VITE_API_URL: http://localhost:3000/api
+      VITE_API_URL: http://192.168.1.102:3000/api
     ports:
       - "5173:5173"
     volumes:
       - .:/workspace
       - frontend_node_modules:/workspace/frontend/node_modules
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    command: sh -c "if [ ! -x node_modules/.bin/vite ]; then npm install --no-audit --no-fund; fi; npm run dev -- --host 0.0.0.0 --port 5173"
 
 volumes:
   mongo_data:
