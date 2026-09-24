@@ -18,7 +18,12 @@ services:
         value: production
       - key: PORT
         value: 3000
-      # Public hosted Piston — fine for demos and viva-day traffic.
+      # Code execution: the public Piston API went whitelist-only in Feb 2026
+      # and rejects /execute without an authorized token (keys are not issued
+      # for individual/college projects). This default stays as a placeholder —
+      # "Run code" will return a clear misconfiguration error until you either
+      # set PISTON_AUTH_TOKEN or point this at a self-hosted Piston (see
+      # DEPLOY.md "Code execution" section).
       - key: PISTON_API_URL
         value: https://emkc.org/api/v2/piston
       # --- fill these in the Render dashboard (or `render env set`) ---

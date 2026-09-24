@@ -13,7 +13,8 @@ Browser ──HTTPS──▶ Render web service (devintervue.onrender.com)
                          │            ┌─── MongoDB Atlas (DB_URL)
                          ├────────────┼─── Clerk (auth)
                          ├────────────┼─── Stream (video/chat)
-                         └────────────┘─── emkc.org Piston (code execution)
+                         └────────────┘─── Piston (code execution — see below;
+                                              needs self-hosting, not public API)
 ```
 
 No separate frontend hosting is needed: with `NODE_ENV=production` the
@@ -78,6 +79,36 @@ on the live domain.)
 > Free-tier Render services **sleep after ~15 min idle** — first load can take
 > ~50 s to wake. For viva day, open the URL once beforehand to warm it up.
 
+## Code execution — read this before relying on "Run code"
+
+The public Piston API (`emkc.org`) went **whitelist-only on 15 Feb 2026**:
+`GET /api/v2/piston/runtimes` still works, but `POST /execute` is rejected
+without an authorized token, and tokens are **not issued for individual,
+portfolio, or university projects**. So on a Render-only deploy, "Run code"
+returns a clear `Server misconfiguration: missing PISTON_AUTH_TOKEN` error
+instead of running anything. Everything else (auth, video, chat, live
+collab editing, problems, sessions) works fine.
+
+Your options for working code execution:
+
+**A. Self-host Piston on a VPS (recommended for viva).** One ~$5–6/mo VPS
+(Hetzner/DigitalOcean) runs the existing `docker-compose.yml`, which already
+includes the Piston service plus automatic runtime installation. Then set
+`PISTON_API_URL=http://<your-vps>:2000/api/v2` (no token needed for your own
+instance). This is the only path with zero compromises.
+
+**B. Request a whitelist token.** Only if your use qualifies as non-commercial
+educational use at the maintainer's discretion — see the "Important Note" in
+[engineer-man/piston](https://github.com/engineer-man/piston#public-api).
+Set it as `PISTON_AUTH_TOKEN` alongside the default `PISTON_API_URL`.
+
+**C. Ship without live execution.** Fine for demonstrating the collaboration
+platform itself; the Run button shows the misconfiguration message.
+
+> Why not Piston on Render/Railway? Piston's sandbox needs `--privileged`
+> Docker containers, which these platforms don't offer — that's why the
+> Blueprint doesn't include it.
+
 ## Alternative — full self-host on a VPS (Docker)
 
 If you have a VPS (Hetzner/DigitalOcean ~$5/mo), the production
@@ -103,4 +134,4 @@ override `backend`/`frontend` services to `build: .` with the root
 | Sign-in loops / redirect error | Live domain not in Clerk allowed origins |
 | `MongoServerSelectionError` | Atlas IP allowlist missing `0.0.0.0/0`, or wrong DB password |
 | Editor stuck on "Connecting" | WSS blocked — check the `/collab` upgrade isn't stripped by a proxy; Render supports WebSockets natively |
-| Code run fails | Public Piston rate-limited — retry; or self-host Piston on a VPS |
+| Code run fails | Public Piston is whitelist-only (Feb 2026) — self-host Piston on a VPS (option A above) or set PISTON_AUTH_TOKEN |
