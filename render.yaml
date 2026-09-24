@@ -28,6 +28,11 @@ services:
         sync: false
       - key: CLERK_SECRET_KEY
         sync: false
+      # Backend also needs the publishable key (clerkMiddleware validates it on
+      # every request); without it all /api/* routes 500. Same value as the
+      # VITE_ one below.
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
       - key: STREAM_API_KEY
         sync: false
       - key: STREAM_API_SECRET
