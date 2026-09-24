@@ -1,206 +1,153 @@
-# CodeCollab - Full Stack Pair Programming Platform
+# DevIntervue — Real-Time Pair-Programming & Technical Interview Platform
 
-CodeCollab is a MERN-based real-time coding collaboration platform with:
-- Clerk authentication
-- live coding sessions
-- Stream video + chat integration
-- problem-based coding practice
-- secure backend code execution proxy (Piston)
+DevIntervue is a full-stack MERN application for **live collaborative coding interviews and pair-programming sessions**. Two users can join a session, talk over video, chat, and edit the same code in real time — with syntax-highlighted editing, multi-language code execution, and judge-style output checking.
 
-## Tech Stack
+Built as a **BTech final-year project**, the codebase is organised to demonstrate real engineering concerns: authentication, real-time collaboration (CRDT), rate limiting, input validation, automated tests, and containerised deployment.
 
-- Frontend: React, Vite, React Query, Clerk, Monaco Editor, Tailwind + DaisyUI
-- Backend: Node.js, Express, MongoDB (Mongoose), Clerk Express middleware, Stream server SDK
-- Code execution: self-hosted Piston (recommended)
+## ✨ Features
 
-## Core Features
+- **Real-time collaborative editor** — Yjs CRDT over WebSockets; keystrokes sync live with per-user cursors and presence colours (falls back to manual refresh if the socket drops)
+- **Video + chat per session** — Stream Video calls and Stream Chat channels, created automatically with each session
+- **Multi-language code execution** — JavaScript, Python, Java via a self-hosted Piston sandbox, proxied through the backend (the API key/token never reaches the browser)
+- **Judge-style output checking** — practice problems with expected outputs; a shared, tested normaliser compares results ignoring whitespace/formatting noise
+- **Session lifecycle** — create, join (idempotent), end (host only); active vs. completed sessions on the dashboard
+- **Authentication** — Clerk (sign-in/sign-up, JWT-verified on every request and on the collaboration WebSocket)
+- **Hardening** — rate limiting (global + strict limit on code execution), input validation, JSON error responses, CORS allow-list, environment validation at startup
+- **Automated tests** — backend unit/integration tests with `node:test` (`npm test`)
+- **Docker Compose stack** — MongoDB + Piston + backend + frontend in one command
 
-- Authenticated dashboard with active and recent sessions
-- Create / join / end pair-programming sessions
-- Session-level video call + chat channel
-- Multi-language code editor (JavaScript, Python, Java)
-- Shared session code persisted in MongoDB
-- In-page `Refresh Code` control for loading the latest shared editor state
-- Judge-style output panel using expected output matching
+## 🧱 Tech Stack
 
-## API Endpoints (Short Reference)
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite, React Router, React Query, Tailwind CSS + DaisyUI |
+| Editor | Monaco Editor + Yjs (`y-monaco` binding) |
+| Real-time sync | Yjs CRDT over WebSocket (`y-websocket`) |
+| Backend | Node.js, Express 5 |
+| Database | MongoDB (Mongoose) |
+| Auth | Clerk (`@clerk/express`, `@clerk/react`) |
+| Video / Chat | Stream (`@stream-io/node-sdk`, `stream-chat`) |
+| Code execution | Piston API (self-hosted Docker) |
+| Background jobs | Inngest (user cleanup on delete) |
+| Tests | `node:test` + `node:assert` (no extra deps) |
 
-| Method | Endpoint | Auth | Purpose |
-|---|---|---|---|
-| `GET` | `/health` | No | Health check |
-| `GET` | `/api/chat/token` | Yes | Stream token for video/chat client |
-| `POST` | `/api/sessions` | Yes | Create coding session |
-| `GET` | `/api/sessions/active` | Yes | List active sessions |
-| `GET` | `/api/sessions/my-recent` | Yes | List recent completed sessions |
-| `GET` | `/api/sessions/:id` | Yes | Fetch session details |
-| `POST` | `/api/sessions/:id/join` | Yes | Join session as participant |
-| `PATCH` | `/api/sessions/:id/code` | Yes | Save shared code and language |
-| `POST` | `/api/sessions/:id/end` | Yes | End session (host only) |
-| `POST` | `/api/code/execute` | Yes | Execute code through backend proxy |
+## 🚀 Quick Start
 
-## Project Structure
-
-- `frontend/`: React client
-- `backend/`: API server and business logic
-- `backend/src/controllers/`: route handlers
-- `backend/src/middleware/protectRoute.js`: auth, atomic user provisioning, and Stream user synchronization
-- `backend/src/controllers/codeController.js`: code execution proxy to Piston
-- `backend/src/controllers/sessionController.js`: session lifecycle and shared code persistence
-
-## Environment Setup
-
-### Backend (`backend/.env`)
-
-Minimum expected variables:
-
-```env
-PORT=3000
-DB_URL=<mongodb_connection_string>
-NODE_ENV=development
-CLIENT_URL=http://localhost:5173
-
-INNGEST_EVENT_KEY=<inngest_event_key>
-INNGEST_SIGNING_KEY=<inngest_signing_key>
-
-STREAM_API_KEY=<stream_api_key>
-STREAM_API_SECRET=<stream_api_secret>
-
-# Self-hosted Piston (recommended)
-PISTON_API_URL=http://localhost:2000/api/v2
-# optional for self-hosted, required for hosted emkc endpoint
-PISTON_AUTH_TOKEN=
-```
-
-### Frontend (`frontend/.env`)
-
-```env
-VITE_API_URL=http://localhost:3000/api
-VITE_CLERK_PUBLISHABLE_KEY=<clerk_publishable_key>
-VITE_STREAM_API_KEY=<stream_api_key>
-```
-
-## Local Development
-
-1. Install dependencies:
-
-```bash
-npm install
-npm install --prefix backend
-npm install --prefix frontend
-```
-
-2. Start backend:
-
-```bash
-npm run dev --prefix backend
-```
-
-3. Start frontend:
-
-```bash
-npm run dev --prefix frontend
-```
-
-### Authentication
-
-Sign in through the application's Clerk sign-in button. Inngest does not require
-an interactive login; it is used for backend event functions. Axios attaches the
-active Clerk bearer token to protected API requests.
-
-## One-Command Docker Dev Stack
-
-Run the complete stack (Mongo + Piston + runtime installer + backend + frontend):
+### Option A — Docker (recommended)
 
 ```bash
 docker compose up -d
 ```
 
-The Compose stack recreates the following services when containers have been
-deleted: MongoDB, Piston, the Piston runtime initializer, the backend, and the
-frontend. Backend and frontend dependency installation is skipped when the
-persistent Node module volumes are already populated.
-
-Useful commands:
-
-```bash
-docker compose logs -f
-docker compose down
-```
-
-Services:
-
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:3000`
-- Piston API: `http://localhost:2000/api/v2`
+- Frontend: http://localhost:5173
+- Backend: http://localhost:3000 (`/health` for a quick check)
+- Piston API: http://localhost:2000/api/v2
 - MongoDB: `mongodb://localhost:27018`
 
-Note: If you already run a Piston container on the host (for example `piston_api`),
-the backend can be configured to use that container instead of the compose-managed
-Piston. Set `PISTON_API_URL` in `backend/.env` or in `docker-compose.yml` to
-`http://host.docker.internal:2000/api/v2` so the backend container will reach the
-host-bound Piston instance. Alternatively, connect your existing container to
-the Compose network or remove the compose piston service to avoid duplicate
-containers.
+```bash
+docker compose logs -f   # follow logs
+docker compose down      # stop everything
+```
 
-The Compose Piston initializer may fail when the host cannot reach GitHub release
-assets. This does not affect authentication, video, chat, or editor synchronization;
-it only prevents the corresponding execution runtime from being installed.
+### Option B — Local development
 
-## Self-Hosted Piston Setup (No Public Token Needed)
-
-1. Run Piston container:
+1. Copy the example env files and fill in your keys:
 
 ```bash
-docker rm -f piston_api
-docker volume create piston_data
-docker run --privileged -dit -p 2000:2000 -v piston_data:/piston --name piston_api ghcr.io/engineer-man/piston
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
-2. Install runtimes used by the app:
+2. Install and run:
 
-```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:2000/api/v2/packages -ContentType "application/json" -Body '{"language":"node","version":"18.15.0"}'
-Invoke-RestMethod -Method Post -Uri http://localhost:2000/api/v2/packages -ContentType "application/json" -Body '{"language":"python","version":"3.10.0"}'
-Invoke-RestMethod -Method Post -Uri http://localhost:2000/api/v2/packages -ContentType "application/json" -Body '{"language":"java","version":"15.0.2"}'
+```bash
+npm install --prefix backend
+npm install --prefix frontend
+npm run dev --prefix backend    # http://localhost:3000
+npm run dev --prefix frontend   # http://localhost:5173
 ```
 
-3. Verify runtimes:
+You need: a [Clerk](https://clerk.com) application (publishable + secret key), [Stream](https://getstream.io) API key/secret, a MongoDB connection string, and a Piston instance (the Compose stack provides the last two).
 
-```powershell
-Invoke-RestMethod -Method Get -Uri http://localhost:2000/api/v2/runtimes
+See `backend/.env.example` and `frontend/.env.example` for the full variable list. The backend validates required variables at startup and exits with a clear message if any are missing.
+
+## 🧪 Testing
+
+```bash
+npm test --prefix backend
 ```
 
-## Reliability Improvements Included
+16 tests covering: output normalisation & matching (the judge), Piston execute-URL construction, environment validation, and server wiring (module imports cleanly, `/health` responds, unauthenticated API access is rejected). No test framework to install — it uses Node's built-in runner.
 
-- atomic Mongo user provisioning from Clerk claims on first protected request
-- automatic synchronization of authenticated users to Stream Chat
-- Clerk bearer token injection for all Axios API requests
-- safer session flow with ObjectId validation
-- idempotent session join behavior for retry/refresh
-- participant persistence after successful Stream membership
-- Stream Video client lifecycle cleanup that avoids repeated joins from session polling
-- increased Stream server request timeout for slower provider responses
-- session code and language persistence with membership authorization
-- editor refresh control that reloads shared code without a page reload
-- conditional Docker dependency installation for faster container recovery
-- corrected Stream user image payload
-- robust Piston execute URL handling for hosted and self-hosted bases
+## 📡 API Reference
 
-## Demo Checklist
+| Method | Endpoint | Auth | Purpose |
+|---|---|---|---|
+| `GET` | `/health` | No | Health check (JSON) |
+| `GET` | `/api/chat/token` | Yes | Stream token for video/chat client |
+| `POST` | `/api/sessions` | Yes | Create coding session |
+| `GET` | `/api/sessions/active` | Yes | List active sessions |
+| `GET` | `/api/sessions/my-recent` | Yes | List recent completed sessions |
+| `GET` | `/api/sessions/:id` | Yes | Fetch session details |
+| `POST` | `/api/sessions/:id/join` | Yes | Join session as participant (idempotent) |
+| `PATCH` | `/api/sessions/:id/code` | Yes | Persist shared code + language (debounced) |
+| `POST` | `/api/sessions/:id/end` | Yes | End session (host only) |
+| `POST` | `/api/code/execute` | Yes | Execute code via backend Piston proxy |
 
-- sign in with two Clerk accounts
-- create session from account A
-- join session from account B
-- verify video + chat connect
-- edit code in account A, then use `Refresh Code` in account B to load the latest saved code
-- switch languages and confirm the selected language is shared
-- run JS/Python/Java code in both problem and session pages
-- end session and confirm participant redirect to dashboard
+Real-time collaboration runs on a separate WebSocket endpoint: `ws(s)://<backend>/collab/<sessionId>?token=<clerk-jwt>`. The token is verified and the user must be the host or a participant of an **active** session.
 
-## Future Scope
+## 🗂️ Project Structure
 
-- team sessions with >2 participants
-- real-time collaborative editor using WebSocket events or OT/CRDT
-- contest mode with timed scoring
-- plagiarism detection and submission history
-- CI/CD deployment pipeline with observability
+```
+DevIntervue/
+├── backend/
+│   ├── src/
+│   │   ├── server.js              # Express app + HTTP server + WS attach (exports app for tests)
+│   │   ├── controllers/           # chat, code (Piston proxy), session lifecycle
+│   │   ├── lib/
+│   │   │   ├── collab.js          # Yjs WebSocket server (auth, per-session docs)
+│   │   │   ├── judge.js           # output normalisation / matching (tested)
+│   │   │   ├── stream.js          # lazy Stream clients (no import-time crashes)
+│   │   │   ├── env.js             # env parsing + validateEnv()
+│   │   │   └── db.js / inngest.js
+│   │   ├── middleware/            # protectRoute (Clerk), rateLimit
+│   │   ├── models/                # User, Session
+│   │   └── routes/
+│   └── tests/                     # node:test suites
+├── frontend/
+│   └── src/
+│       ├── hooks/useCollab.js     # Yjs doc + provider + awareness
+│       ├── lib/judge.js           # shared judge utils (mirrors backend)
+│       ├── lib/ws.js              # collaboration WebSocket URL builder
+│       ├── components/            # CodeEditorPanel (Yjs-bound), OutputPanel, …
+│       └── pages/                 # Dashboard, Session, Problem practice
+├── docs/                          # academic documentation
+│   ├── ARCHITECTURE.md
+│   ├── VIVA_PREP.md
+│   └── REPORT_OUTLINE.md
+└── docker-compose.yml
+```
+
+## 📚 Academic Documentation
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system architecture, component & data-flow diagrams, ER diagram, real-time sync design
+- [`docs/VIVA_PREP.md`](docs/VIVA_PREP.md) — likely viva questions with concise answers
+- [`docs/REPORT_OUTLINE.md`](docs/REPORT_OUTLINE.md) — chapter-by-chapter final-year report outline
+
+## ✅ Demo Checklist
+
+1. Sign in with two accounts (e.g. two browsers)
+2. Account A creates a session; account B joins from the dashboard
+3. Verify video + chat connect in both windows
+4. Type in account A's editor — text appears live in account B (cursor labels visible)
+5. Disconnect network briefly — editor shows *Offline*, falls back to Refresh Code
+6. Switch language, run code in both Problem and Session pages
+7. Host ends the session; participant is redirected to the dashboard
+
+## 🔮 Future Scope
+
+- 3+ participant sessions with roles (interviewer/candidate/observer)
+- Timed contest mode with scoring and leaderboard
+- Submission history and plagiarism similarity checks
+- Interview scheduling with calendar invites
+- CI/CD pipeline with observability (metrics, tracing)

@@ -2,7 +2,7 @@ import { ENV } from "../lib/env.js";
 
 const DEFAULT_PISTON_API_URL = "https://emkc.org/api/v2/piston";
 
-function getExecuteUrl(baseUrl) {
+export function getExecuteUrl(baseUrl) {
   const normalized = (baseUrl || "").replace(/\/+$/, "");
   return normalized.endsWith("/execute") ? normalized : `${normalized}/execute`;
 }

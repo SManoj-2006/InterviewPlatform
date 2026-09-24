@@ -8,9 +8,10 @@ import {
   LoaderIcon,
 } from "lucide-react";
 import { Link } from "react-router";
+import { AlertTriangleIcon, RefreshCwIcon } from "lucide-react";
 import { getDifficultyBadgeClass } from "../lib/utils";
 
-function ActiveSessions({ sessions, isLoading, isUserInSession }) {
+function ActiveSessions({ sessions, isLoading, isError, onRetry, isUserInSession }) {
   return (
     <div className="lg:col-span-2 card bg-base-100 border-2 border-primary/20 hover:border-primary/30 h-full">
       <div className="card-body">
@@ -35,6 +36,15 @@ function ActiveSessions({ sessions, isLoading, isUserInSession }) {
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
               <LoaderIcon className="size-10 animate-spin text-primary" />
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <AlertTriangleIcon className="size-10 text-warning" />
+              <p className="text-base-content/70">Could not load live sessions.</p>
+              <button className="btn btn-sm btn-ghost gap-2" onClick={onRetry}>
+                <RefreshCwIcon className="size-4" />
+                Retry
+              </button>
             </div>
           ) : sessions.length > 0 ? (
             sessions.map((session) => (

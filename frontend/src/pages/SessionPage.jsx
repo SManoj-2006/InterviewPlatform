@@ -12,6 +12,8 @@ import { sessionApi } from "../api/sessions";
 import { Loader2Icon, LogOutIcon, PhoneOffIcon } from "lucide-react";
 import CodeEditorPanel from "../components/CodeEditorPanel";
 import OutputPanel from "../components/OutputPanel";
+import SessionTimer from "../components/SessionTimer";
+import { useCollab } from "../hooks/useCollab";
 
 import useStreamClient from "../hooks/useStreamClient";
 import { StreamCall, StreamVideo } from "@stream-io/video-react-sdk";
@@ -34,6 +36,16 @@ function SessionPage() {
   const isHost = session?.host?.clerkId === user?.id;
   const isParticipant = session?.participant?.clerkId === user?.id;
 
+  // Real-time collaborative editing (Yjs). Falls back to the legacy
+  // manual-refresh mode if the socket can't sync.
+  const canCollab = !!session && session.status === "active" && (isHost || isParticipant);
+  const {
+    yText,
+    awareness,
+    status: collabStatus,
+    isLive,
+  } = useCollab(id, { enabled: canCollab });
+
   const { call, channel, chatClient, isInitializingCall, streamClient } = useStreamClient(
     session,
     loadingSession,
@@ -51,8 +63,48 @@ function SessionPage() {
   const codeSyncTimer = useRef(null);
   const starterCodeInitialized = useRef(false);
   const hasUnsavedLocalEdit = useRef(false);
+  const collabInitialized = useRef(false);
+  const collabSaveTimer = useRef(null);
+  const languageRef = useRef(selectedLanguage);
+  languageRef.current = selectedLanguage;
+
+  // Seed the shared Yjs document once the socket syncs. Whoever syncs first
+  // with an empty document (normally the host) seeds it from the persisted
+  // session code or the problem starter code.
+  useEffect(() => {
+    if (!isLive || !yText || !session || collabInitialized.current) return;
+    collabInitialized.current = true;
+    if (yText.length === 0) {
+      const initial = session.code || problemData?.starterCode?.[selectedLanguage] || "";
+      if (initial) yText.insert(0, initial);
+    }
+    setCode(yText.toString());
+  }, [isLive, yText, session, problemData, selectedLanguage]);
+
+  // In live mode the Yjs document is the source of truth: mirror its text
+  // into local state (for Run) and debounce-persist it to MongoDB.
+  useEffect(() => {
+    if (!isLive || !yText) return;
+    const observer = () => {
+      setCode(yText.toString());
+      if (collabSaveTimer.current) clearTimeout(collabSaveTimer.current);
+      collabSaveTimer.current = setTimeout(() => {
+        sessionApi
+          .updateSessionCode(id, { code: yText.toString(), language: languageRef.current })
+          .catch((error) => {
+            toast.error(error.response?.data?.message || "Code changes could not be saved");
+          });
+      }, 2000);
+    };
+    yText.observe(observer);
+    return () => {
+      yText.unobserve(observer);
+      if (collabSaveTimer.current) clearTimeout(collabSaveTimer.current);
+    };
+  }, [isLive, yText, id]);
 
   useEffect(() => {
+    if (isLive) return; // live mode: Yjs is the source of truth
     if (session?.code && !hasUnsavedLocalEdit.current) {
       setCode(session.code);
       starterCodeInitialized.current = true;
@@ -60,14 +112,15 @@ function SessionPage() {
     if (session?.language && LANGUAGE_CONFIG[session.language]) {
       setSelectedLanguage(session.language);
     }
-  }, [session?.code, session?.language]);
+  }, [session?.code, session?.language, isLive]);
 
   useEffect(() => {
+    if (isLive) return; // live mode: seeded via the Yjs document instead
     if (problemData && session && !session.code && !starterCodeInitialized.current) {
       setCode(problemData.starterCode[selectedLanguage] || "");
       starterCodeInitialized.current = true;
     }
-  }, [problemData, session, selectedLanguage]);
+  }, [problemData, session, selectedLanguage, isLive]);
 
   const publishCodeUpdate = (nextCode, nextLanguage) => {
     hasUnsavedLocalEdit.current = true;
@@ -103,11 +156,16 @@ function SessionPage() {
   const handleLanguageChange = (e) => {
     const newLang = e.target.value;
     setSelectedLanguage(newLang);
+    setOutput(null);
+    if (isLive && yText) {
+      // Live mode: preserve the shared text, only the language changes.
+      sessionApi.updateSessionCode(id, { code: yText.toString(), language: newLang }).catch(() => {});
+      return;
+    }
     // use problem-specific starter code
     const starterCode = problemData?.starterCode?.[newLang] || "";
     setCode(starterCode);
     publishCodeUpdate(starterCode, newLang);
-    setOutput(null);
   };
 
   const handleRefreshCode = async () => {
@@ -138,7 +196,8 @@ function SessionPage() {
     setIsRunning(true);
     setOutput(null);
 
-    const result = await executeCode(selectedLanguage, code);
+    const currentCode = isLive && yText ? yText.toString() : code;
+    const result = await executeCode(selectedLanguage, currentCode);
     setOutput(result);
     setIsRunning(false);
   };
@@ -179,6 +238,7 @@ function SessionPage() {
                       </div>
 
                       <div className="flex items-center gap-3">
+                        <SessionTimer startedAt={session?.createdAt} />
                         <span
                           className={`badge badge-lg ${getDifficultyBadgeClass(
                             session?.difficulty
@@ -299,6 +359,10 @@ function SessionPage() {
                       onRefreshCode={handleRefreshCode}
                       isRefreshing={isRefreshingCode}
                       onRunCode={handleRunCode}
+                      yText={yText}
+                      awareness={awareness}
+                      isLive={isLive}
+                      collabError={collabStatus === "error"}
                     />
                   </Panel>
 

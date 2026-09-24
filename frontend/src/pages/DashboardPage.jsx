@@ -18,8 +18,18 @@ function DashboardPage() {
 
   const createSessionMutation = useCreateSession();
 
-  const { data: activeSessionsData, isLoading: loadingActiveSessions } = useActiveSessions();
-  const { data: recentSessionsData, isLoading: loadingRecentSessions } = useMyRecentSessions();
+  const {
+    data: activeSessionsData,
+    isLoading: loadingActiveSessions,
+    isError: activeSessionsError,
+    refetch: refetchActiveSessions,
+  } = useActiveSessions();
+  const {
+    data: recentSessionsData,
+    isLoading: loadingRecentSessions,
+    isError: recentSessionsError,
+    refetch: refetchRecentSessions,
+  } = useMyRecentSessions();
 
   const handleCreateRoom = () => {
     if (!roomConfig.problem || !roomConfig.difficulty) return;
@@ -63,11 +73,18 @@ function DashboardPage() {
             <ActiveSessions
               sessions={activeSessions}
               isLoading={loadingActiveSessions}
+              isError={activeSessionsError}
+              onRetry={refetchActiveSessions}
               isUserInSession={isUserInSession}
             />
           </div>
 
-          <RecentSessions sessions={recentSessions} isLoading={loadingRecentSessions} />
+          <RecentSessions
+              sessions={recentSessions}
+              isLoading={loadingRecentSessions}
+              isError={recentSessionsError}
+              onRetry={refetchRecentSessions}
+            />
         </div>
       </div>
 

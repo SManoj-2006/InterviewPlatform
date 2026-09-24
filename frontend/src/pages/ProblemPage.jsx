@@ -8,6 +8,7 @@ import ProblemDescription from "../components/ProblemDescription";
 import OutputPanel from "../components/OutputPanel";
 import CodeEditorPanel from "../components/CodeEditorPanel";
 import { executeCode } from "../lib/piston";
+import { outputsMatch } from "../lib/judge";
 
 import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
@@ -56,30 +57,9 @@ function ProblemPage() {
     });
   };
 
-  const normalizeOutput = (output) => {
-    // normalize output for comparison (trim whitespace, handle different spacing)
-    return output
-      .trim()
-      .split("\n")
-      .map((line) =>
-        line
-          .trim()
-          // remove spaces after [ and before ]
-          .replace(/\[\s+/g, "[")
-          .replace(/\s+\]/g, "]")
-          // normalize spaces around commas to single space after comma
-          .replace(/\s*,\s*/g, ",")
-      )
-      .filter((line) => line.length > 0)
-      .join("\n");
-  };
-
-  const checkIfTestsPassed = (actualOutput, expectedOutput) => {
-    const normalizedActual = normalizeOutput(actualOutput);
-    const normalizedExpected = normalizeOutput(expectedOutput);
-
-    return normalizedActual == normalizedExpected;
-  };
+  // shared, tested implementation in src/lib/judge.js
+  const checkIfTestsPassed = (actualOutput, expectedOutput) =>
+    outputsMatch(actualOutput, expectedOutput);
 
   const handleRunCode = async () => {
     setIsRunning(true);

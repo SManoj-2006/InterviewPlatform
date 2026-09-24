@@ -1,8 +1,8 @@
-import { Code2, Clock, Users, Trophy, Loader } from "lucide-react";
+import { Code2, Clock, Users, Trophy, Loader, AlertTriangle, RefreshCw } from "lucide-react";
 import { getDifficultyBadgeClass } from "../lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
-function RecentSessions({ sessions, isLoading }) {
+function RecentSessions({ sessions, isLoading, isError, onRetry }) {
   return (
     <div className="card bg-base-100 border-2 border-accent/20 hover:border-accent/30 mt-8">
       <div className="card-body">
@@ -17,6 +17,15 @@ function RecentSessions({ sessions, isLoading }) {
           {isLoading ? (
             <div className="col-span-full flex items-center justify-center py-20">
               <Loader className="w-10 h-10 animate-spin text-primary" />
+            </div>
+          ) : isError ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-20 gap-3">
+              <AlertTriangle className="w-10 h-10 text-warning" />
+              <p className="text-base-content/70">Could not load past sessions.</p>
+              <button className="btn btn-sm btn-ghost gap-2" onClick={onRetry}>
+                <RefreshCw className="w-4 h-4" />
+                Retry
+              </button>
             </div>
           ) : sessions.length > 0 ? (
             sessions.map((session) => (
