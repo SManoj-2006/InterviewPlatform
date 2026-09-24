@@ -43,6 +43,10 @@ function CodeEditorPanel({
   awareness = null,
   isLive = false,
   collabError = false,
+  // show the Live/Connecting/Offline badge only where a live session can
+  // exist (session page). On solo pages (problems) there is nothing to
+  // connect to, so the badge stays hidden instead of spinning forever.
+  showLiveBadge = false,
 }) {
   const bindingRef = useRef(null);
   const collabMode = isLive && yText;
@@ -83,7 +87,7 @@ function CodeEditorPanel({
               </option>
             ))}
           </select>
-          <LiveStatusBadge isLive={isLive} collabError={collabError} />
+          {showLiveBadge && <LiveStatusBadge isLive={isLive} collabError={collabError} />}
         </div>
 
         <div className="flex items-center gap-2">

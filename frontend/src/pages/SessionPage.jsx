@@ -363,6 +363,7 @@ function SessionPage() {
                       awareness={awareness}
                       isLive={isLive}
                       collabError={collabStatus === "error"}
+                      showLiveBadge={canCollab}
                     />
                   </Panel>
 
