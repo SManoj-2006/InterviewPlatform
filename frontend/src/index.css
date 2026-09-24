@@ -3,6 +3,16 @@
   themes: all;
 }
 
+/* Smooth anchor scrolling (e.g. landing page "How it works") */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Brand-tinted text selection */
+::selection {
+  background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
 /* Add cursor pointer to buttons by default - this is coming from tailwind docs */
 @layer base {
   button:not(:disabled),

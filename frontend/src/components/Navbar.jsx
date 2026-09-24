@@ -23,7 +23,7 @@ function Navbar() {
             <span className="font-black text-xl bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent font-mono tracking-wider">
               DevIntervue
             </span>
-            <span className="text-xs text-base-content/60 font-medium -mt-1">Code Together</span>
+            <span className="text-xs text-base-content/60 font-medium -mt-1">Interview together</span>
           </div>
         </Link>
 
