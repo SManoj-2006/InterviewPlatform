@@ -2,8 +2,9 @@
 
 Live architecture: **one Docker container** (Express API + built React
 frontend + Yjs WebSocket, all on one port) on Render, **MongoDB Atlas**
-free tier for data, **public Piston API** for code execution, and the
-existing **Clerk** / **Stream** SaaS accounts for auth/video/chat.
+free tier for data, the **free Wandbox API** for code execution (no key
+needed), and the existing **Clerk** / **Stream** SaaS accounts for
+auth/video/chat.
 
 ```
 Browser ──HTTPS──▶ Render web service (devintervue.onrender.com)
@@ -13,8 +14,7 @@ Browser ──HTTPS──▶ Render web service (devintervue.onrender.com)
                          │            ┌─── MongoDB Atlas (DB_URL)
                          ├────────────┼─── Clerk (auth)
                          ├────────────┼─── Stream (video/chat)
-                         └────────────┘─── Piston (code execution — see below;
-                                              needs self-hosting, not public API)
+                         └────────────┘─── Wandbox API (code execution, keyless)
 ```
 
 No separate frontend hosting is needed: with `NODE_ENV=production` the
@@ -53,10 +53,12 @@ Dockerfile path `./Dockerfile` → plan Free → Health check path `/health`.
 |---|---|---|
 | `DB_URL` | runtime | Atlas connection string from step 1 |
 | `CLERK_SECRET_KEY` | runtime | Clerk dashboard → API keys |
+| `CLERK_PUBLISHABLE_KEY` | runtime | **Same value as `VITE_CLERK_PUBLISHABLE_KEY`** — the backend rejects all `/api/*` requests without it |
 | `STREAM_API_KEY` / `STREAM_API_SECRET` | runtime | Stream dashboard |
 | `VITE_CLERK_PUBLISHABLE_KEY` | **build time** | Clerk publishable key — must be set *before* the first build |
 | `VITE_STREAM_API_KEY` | **build time** | Stream key — must be set *before* the first build |
-| `PISTON_API_URL` | preset | `https://emkc.org/api/v2/piston` (public hosted executor) |
+| `PISTON_API_URL` | preset | only used when `CODE_EXECUTOR=piston` (self-hosted) |
+| `CODE_EXECUTOR` | preset | `wandbox` (default, free, keyless) or `piston` |
 | `NODE_ENV` / `PORT` | preset | `production` / `3000` |
 
 > If you add the `VITE_*` keys after the first build, trigger **Manual Deploy →
@@ -73,7 +75,7 @@ on the live domain.)
 1. `https://<your-service>.onrender.com/health` → `{"msg":"api is up and running"}`
 2. Sign in, create a session, join from a second browser/incognito window.
 3. Type in one editor — the other updates live (cursor label visible).
-4. Run JS/Python/Java on the Problem page (public Piston handles it).
+4. Run JS/Python/Java on the Problem page (free Wandbox handles it — no key needed).
 5. End the session as host; participant returns to the dashboard.
 
 > Free-tier Render services **sleep after ~15 min idle** — first load can take
