@@ -6,7 +6,10 @@ export const ENV = {
   PORT: process.env.PORT || "3000",
   DB_URL: process.env.DB_URL,
   NODE_ENV: process.env.NODE_ENV || "development",
-  CLIENT_URL: process.env.CLIENT_URL || "http://localhost:5173",
+  // Render.com exposes the public URL as RENDER_EXTERNAL_URL; use it when
+  // CLIENT_URL is not set explicitly so CORS works without extra config.
+  CLIENT_URL:
+    process.env.CLIENT_URL || process.env.RENDER_EXTERNAL_URL || "http://localhost:5173",
   CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
   CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY,
   INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,

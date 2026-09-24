@@ -7,7 +7,8 @@ import { ENV } from "./env.js";
 /**
  * Real-time collaborative editing over Yjs (CRDT).
  *
- * Clients open a WebSocket to /collab?sessionId=<id>&token=<clerk-jwt>.
+ * Clients (y-websocket WebsocketProvider) open a WebSocket to
+ * /collab/<sessionId>?sessionId=<id>&token=<clerk-jwt>.
  * The token is verified with Clerk and the user must be the host or the
  * participant of an *active* session before the socket is accepted.
  * Each session gets its own Yjs document, keyed by the session id.

@@ -1,0 +1,37 @@
+# Render Blueprint — one-click deploy of DevIntervue.
+# https://render.com/docs/blueprint-spec
+# Code execution uses the public Piston API (no self-hosted sandbox needed).
+# Database: create a free MongoDB Atlas cluster and paste its connection
+# string into DB_URL after deploy (or before — `sync: false` vars are
+# filled in the Render dashboard).
+
+services:
+  - type: web
+    name: devintervue
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      # Public hosted Piston — fine for demos and viva-day traffic.
+      - key: PISTON_API_URL
+        value: https://emkc.org/api/v2/piston
+      # --- fill these in the Render dashboard (or `render env set`) ---
+      - key: DB_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: STREAM_API_KEY
+        sync: false
+      - key: STREAM_API_SECRET
+        sync: false
+      # Baked into the frontend bundle at build time:
+      - key: VITE_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_STREAM_API_KEY
+        sync: false

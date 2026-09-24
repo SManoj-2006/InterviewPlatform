@@ -45,6 +45,20 @@ app.get("/health", (req, res) => {
   res.status(200).json({ msg: "api is up and running" });
 });
 
+// In production the backend serves the built frontend itself (single-service
+// deploy). Static assets are registered BEFORE the auth middleware on purpose:
+// a page load must never fail because of an auth misconfiguration.
+if (ENV.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+  // SPA fallback for client-side routes (/dashboard, /session/:id, ...).
+  // Must not swallow API requests, which are registered below.
+  app.get("/{*any}", (req, res, next) => {
+    if (req.path.startsWith("/api/")) return next();
+    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+  });
+}
+
 app.use(clerkMiddleware()); // adds req.auth() to the request object
 
 app.use("/api/inngest", serve({ client: inngest, functions }));
@@ -53,14 +67,10 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/code", codeRoutes);
 
-// make our app ready for deployment
-if (ENV.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-  app.get("/{*any}", (req, res) => {
-    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
-  });
-}
+// Unknown API routes get a JSON 404 (not the SPA fallback, not HTML).
+app.use("/api", (req, res) => {
+  res.status(404).json({ message: "Not Found" });
+});
 
 // JSON error handler: API consumers get structured errors, never HTML pages.
 app.use((err, req, res, _next) => {

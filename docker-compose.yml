@@ -56,9 +56,10 @@ services:
       NODE_ENV: development
       DB_URL: mongodb://mongo:27017/devintervue
       CLIENT_URL: ${CLIENT_URL:-http://localhost:5173}
-      # use host.docker.internal so the backend container can reach an existing
-      # piston_api container that is bound to the host port 2000
-      PISTON_API_URL: http://host.docker.internal:2000/api/v2
+      # Defaults to the compose-network Piston service. Override with
+      # PISTON_API_URL=http://host.docker.internal:2000/api/v2 to use a
+      # Piston container already running on the host instead.
+      PISTON_API_URL: ${PISTON_API_URL:-http://piston:2000/api/v2}
     ports:
       - "3000:3000"
     volumes:
