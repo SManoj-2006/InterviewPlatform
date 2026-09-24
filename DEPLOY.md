@@ -79,35 +79,34 @@ on the live domain.)
 > Free-tier Render services **sleep after ~15 min idle** — first load can take
 > ~50 s to wake. For viva day, open the URL once beforehand to warm it up.
 
-## Code execution — read this before relying on "Run code"
+## Code execution — how "Run code" works live
+
+Code execution defaults to the **Wandbox API** (`CODE_EXECUTOR=wandbox`):
+free, no key, no signup, and verified working for Python, JavaScript, and
+Java (the three languages the app offers). The backend translates Wandbox
+responses into the Piston shape, so the frontend needed no changes. This is
+what the Render Blueprint uses — zero config, working "Run code" on day one.
 
 The public Piston API (`emkc.org`) went **whitelist-only on 15 Feb 2026**:
-`GET /api/v2/piston/runtimes` still works, but `POST /execute` is rejected
-without an authorized token, and tokens are **not issued for individual,
-portfolio, or university projects**. So on a Render-only deploy, "Run code"
-returns a clear `Server misconfiguration: missing PISTON_AUTH_TOKEN` error
-instead of running anything. Everything else (auth, video, chat, live
-collab editing, problems, sessions) works fine.
+`POST /execute` is rejected without an authorized token, and tokens are
+**not issued for individual, portfolio, or university projects** — so it is
+not a viable default.
 
-Your options for working code execution:
+If you ever want Piston instead (faster, private, no third-party dependency):
 
-**A. Self-host Piston on a VPS (recommended for viva).** One ~$5–6/mo VPS
-(Hetzner/DigitalOcean) runs the existing `docker-compose.yml`, which already
-includes the Piston service plus automatic runtime installation. Then set
+**A. Self-host Piston on a VPS.** One ~$5–6/mo VPS (Hetzner/DigitalOcean) runs
+the existing `docker-compose.yml`, which already includes the Piston service
+plus automatic runtime installation. Then set `CODE_EXECUTOR=piston` and
 `PISTON_API_URL=http://<your-vps>:2000/api/v2` (no token needed for your own
-instance). This is the only path with zero compromises.
+instance).
 
 **B. Request a whitelist token.** Only if your use qualifies as non-commercial
 educational use at the maintainer's discretion — see the "Important Note" in
 [engineer-man/piston](https://github.com/engineer-man/piston#public-api).
-Set it as `PISTON_AUTH_TOKEN` alongside the default `PISTON_API_URL`.
-
-**C. Ship without live execution.** Fine for demonstrating the collaboration
-platform itself; the Run button shows the misconfiguration message.
+Set it as `PISTON_AUTH_TOKEN` with `CODE_EXECUTOR=piston`.
 
 > Why not Piston on Render/Railway? Piston's sandbox needs `--privileged`
-> Docker containers, which these platforms don't offer — that's why the
-> Blueprint doesn't include it.
+> Docker containers, which these platforms don't offer.
 
 ## Alternative — full self-host on a VPS (Docker)
 
@@ -134,4 +133,4 @@ override `backend`/`frontend` services to `build: .` with the root
 | Sign-in loops / redirect error | Live domain not in Clerk allowed origins |
 | `MongoServerSelectionError` | Atlas IP allowlist missing `0.0.0.0/0`, or wrong DB password |
 | Editor stuck on "Connecting" | WSS blocked — check the `/collab` upgrade isn't stripped by a proxy; Render supports WebSockets natively |
-| Code run fails | Public Piston is whitelist-only (Feb 2026) — self-host Piston on a VPS (option A above) or set PISTON_AUTH_TOKEN |
+| Code run fails | Default executor is free Wandbox — check the response message; for Piston mode, self-host it or set PISTON_AUTH_TOKEN |

@@ -18,6 +18,10 @@ export const ENV = {
   STREAM_API_SECRET: process.env.STREAM_API_SECRET,
   PISTON_API_URL: process.env.PISTON_API_URL,
   PISTON_AUTH_TOKEN: process.env.PISTON_AUTH_TOKEN,
+  // Code execution backend: "piston" (self-hosted or token-holding Piston API)
+  // or "wandbox" (free, no key). Defaults to piston when PISTON_API_URL is set,
+  // otherwise wandbox — the public Piston API is whitelist-only since Feb 2026.
+  CODE_EXECUTOR: process.env.CODE_EXECUTOR,
   // Comma-separated Clerk user IDs allowed to skip Stream/Clerk in local dev.
   // Leave empty in production.
   DEV_BYPASS_USER_IDS: process.env.DEV_BYPASS_USER_IDS || "",
